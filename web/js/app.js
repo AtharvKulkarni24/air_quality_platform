@@ -47,6 +47,7 @@ function setupEventListeners() {
   if (citySelect) {
     citySelect.addEventListener("change", async (e) => {
       STATE.city = e.target.value;
+      STATE.selectedStationId = null;
       await loadDashboardData();
     });
   }
@@ -174,7 +175,7 @@ function renderHeroCards(summary, status) {
   if (domPollutant) {
     domPollutant.textContent = (summary.primaryDominantPollutant || "PM10").toUpperCase();
     if (domDetail) {
-      domDetail.textContent = `Primary factor determining ${STATE.city} health index`;
+      domDetail.textContent = `Primary factor determining ${STATE.city || "regional"} health index`;
     }
   }
 

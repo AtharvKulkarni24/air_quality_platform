@@ -205,10 +205,12 @@ app.get("/api/stations/:id", async (req, res, next) => {
 
 app.get("/api/aqi/summary", async (req, res, next) => {
   try {
-    const city = req.query.city || "Pune";
+    const rawCity = typeof req.query.city === "string" ? req.query.city.trim() : "";
+    const isAllRegions = !rawCity || rawCity.toLowerCase() === "all" || rawCity.toLowerCase() === "all regions";
+    const selectedCity = isAllRegions ? "All Regions" : rawCity;
 
-    // Query latest observed reading per sensor for the selected city
-    const readingsQuery = `
+    // Query latest observed reading per sensor (optionally filtered by city)
+    let readingsQuery = `
       SELECT DISTINCT ON (s.id)
         l.id AS station_id,
         l.name AS station_name,
@@ -223,15 +225,21 @@ app.get("/api/aqi/summary", async (req, res, next) => {
       JOIN sensors s ON s.location_id = l.id
       JOIN air_quality_readings r ON r.sensor_id = s.id
       WHERE r.measurement_type = 'observed'
-        AND l.city ILIKE $1
-      ORDER BY s.id, r.observed_at DESC
     `;
 
-    const result = await pool.query(readingsQuery, [`%${city}%`]);
+    const values = [];
+    if (!isAllRegions) {
+      readingsQuery += ` AND l.city ILIKE $1`;
+      values.push(`%${rawCity}%`);
+    }
+
+    readingsQuery += ` ORDER BY s.id, r.observed_at DESC`;
+
+    const result = await pool.query(readingsQuery, values);
 
     if (result.rows.length === 0) {
       return res.json({
-        city,
+        city: selectedCity,
         status: "No active station data found",
         stationsCount: 0,
         stations: [],
@@ -294,7 +302,7 @@ app.get("/api/aqi/summary", async (req, res, next) => {
     );
 
     res.json({
-      city,
+      city: selectedCity,
       stationsCount: stationsAQI.length,
       averageAQI: avgAQI,
       peakAQI: maxAQI,
