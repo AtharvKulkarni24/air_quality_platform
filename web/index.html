@@ -1,0 +1,323 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="description" content="AeroPulse - Real-time air quality streaming platform with CPCB AQI analytics, sensor anomaly detection, and 24-hour machine learning forecasting." />
+  <title>AeroPulse | Real-Time Air Quality & Predictive AI Platform</title>
+
+  <!-- Google Fonts: Outfit & Plus Jakarta Sans -->
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800&display=swap" rel="stylesheet" />
+
+  <!-- Leaflet CSS for Dark Maps -->
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin="" />
+
+  <!-- Custom Stylesheet -->
+  <link rel="stylesheet" href="css/style.css" />
+</head>
+<body>
+
+  <!-- Top Navigation Bar -->
+  <header class="navbar">
+    <a href="#" class="nav-brand">
+      <div class="brand-icon">
+        <svg viewBox="0 0 24 24">
+          <path d="M19.35 10.04C18.67 6.59 15.64 4 12 4 9.11 4 6.6 5.64 5.35 8.04 2.34 8.36 0 10.91 0 14c0 3.31 2.69 6 6 6h13c2.76 0 5-2.24 5-5 0-2.64-2.05-4.78-4.65-4.96zM19 18H6c-2.21 0-4-1.79-4-4 0-2.05 1.53-3.76 3.56-3.97l1.07-.11.5-.95C8.08 7.14 9.94 6 12 6c2.62 0 4.88 1.86 5.39 4.43l.3 1.5 1.53.11c1.56.1 2.78 1.41 2.78 2.96 0 1.65-1.35 3-3 3z"/>
+        </svg>
+      </div>
+      <div>
+        <span class="brand-title">AeroPulse</span>
+        <span class="brand-tag">AI Platform</span>
+      </div>
+    </a>
+
+    <div class="nav-controls">
+      <div class="status-badge">
+        <div class="pulse-dot"></div>
+        <span>Kafka Stream Active</span>
+      </div>
+
+      <div id="sensor-health-badge" class="status-badge" style="background: rgba(56, 189, 248, 0.1); border-color: rgba(56, 189, 248, 0.3); color: var(--text-accent);">
+        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5">
+          <polyline points="20 6 9 17 4 12"></polyline>
+        </svg>
+        <span id="sensor-health-text">Sensors: 100% Nominal</span>
+      </div>
+
+      <div class="select-wrapper">
+        <select id="city-select" aria-label="Select City Filter">
+          <option value="Pune" selected>Pune & PCMC</option>
+          <option value="Delhi">Delhi NCR</option>
+          <option value="Mumbai">Mumbai</option>
+          <option value="">All Regions</option>
+        </select>
+      </div>
+
+      <button id="btn-refresh" class="btn-refresh" title="Refresh Telemetry">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polyline points="23 4 23 10 17 10"></polyline>
+          <polyline points="1 20 1 14 7 14"></polyline>
+          <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"></path>
+        </svg>
+        <span>Refresh</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Main Container -->
+  <main class="container">
+
+    <!-- Hero Metric Cards Grid -->
+    <section class="hero-grid" aria-label="Air Quality Overview">
+      
+      <!-- Card 1: City Overall AQI -->
+      <article class="glass-card hero-card">
+        <div class="card-header">
+          <span class="card-label">City Health Index</span>
+          <div class="card-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="var(--text-accent)" stroke-width="2">
+              <circle cx="12" cy="12" r="10"></circle>
+              <polyline points="12 6 12 12 16 14"></polyline>
+            </svg>
+          </div>
+        </div>
+        <div class="aqi-hero-content">
+          <span id="hero-aqi-score" class="aqi-score">--</span>
+          <span id="hero-aqi-pill" class="aqi-pill">Loading</span>
+        </div>
+        <p id="hero-aqi-desc" class="hero-desc">Connecting to real-time telemetry stream...</p>
+      </article>
+
+      <!-- Card 2: Primary Risk Pollutant -->
+      <article class="glass-card hero-card">
+        <div class="card-header">
+          <span class="card-label">Dominant Pollutant</span>
+          <div class="card-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#f59e0b" stroke-width="2">
+              <path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"></path>
+            </svg>
+          </div>
+        </div>
+        <div>
+          <div id="hero-dominant-pollutant" class="stat-value" style="color: #f59e0b;">PM10</div>
+          <p id="hero-dominant-detail" class="hero-desc">Primary contributor to regional AQI</p>
+        </div>
+        <span class="stat-sub">Sub-Index derived via CPCB piece-wise curve</span>
+      </article>
+
+      <!-- Card 3: Active Monitoring Network -->
+      <article class="glass-card hero-card">
+        <div class="card-header">
+          <span class="card-label">Telemetry Pipeline</span>
+          <div class="card-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#10b981" stroke-width="2">
+              <path d="M22 12h-4l-3 9L9 3l-3 9H2"></path>
+            </svg>
+          </div>
+        </div>
+        <div>
+          <div id="hero-total-stations" class="stat-value" style="color: #10b981;">22 Stations</div>
+          <p id="hero-total-sensors" class="hero-desc">218 Sensors (OpenAQ + IoT Simulator)</p>
+        </div>
+        <span class="stat-sub">Checkpointed in PostgreSQL via Kafka</span>
+      </article>
+
+      <!-- Card 4: ML 24h Horizon Forecast -->
+      <article class="glass-card hero-card">
+        <div class="card-header">
+          <span class="card-label">Predictive AI Engine</span>
+          <div class="card-icon">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2">
+              <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
+            </svg>
+          </div>
+        </div>
+        <div>
+          <div id="hero-forecast-count" class="stat-value" style="color: #c084fc;">48 Horizon Points</div>
+          <p class="hero-desc">HistGradientBoosting Regressor</p>
+        </div>
+        <span class="stat-sub">24-hour ahead autoregressive projection</span>
+      </article>
+
+    </section>
+
+    <!-- Workspace Grid: Map & Chart (Left) + Leaderboard (Right) -->
+    <section class="workspace-grid">
+
+      <!-- Left Column: Map & Chart -->
+      <div class="main-column">
+
+        <!-- Interactive Map Card -->
+        <div class="glass-card">
+          <div class="panel-header">
+            <h2 class="panel-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <polygon points="1 6 1 22 8 18 16 22 23 18 23 2 16 6 8 2 1 6"></polygon>
+                <line x1="8" y1="2" x2="8" y2="18"></line>
+                <line x1="16" y1="6" x2="16" y2="22"></line>
+              </svg>
+              <span>Regional Station Map</span>
+            </h2>
+            <span class="panel-badge">Live Sensor Pins</span>
+          </div>
+
+          <div class="map-container">
+            <div id="map"></div>
+          </div>
+        </div>
+
+        <!-- Trend & ML Forecast Chart Card -->
+        <div class="glass-card chart-card">
+          <div class="panel-header">
+            <div>
+              <h2 id="chart-station-title" class="panel-title">Observed vs ML Forecast</h2>
+              <span style="font-size: 0.75rem; color: var(--text-muted);">Historical Telemetry vs. 24-Hour AI Prediction</span>
+            </div>
+
+            <!-- Pollutant Selector Tabs -->
+            <div class="chart-controls">
+              <button class="tab-btn active" data-pollutant="pm25">PM2.5</button>
+              <button class="tab-btn" data-pollutant="pm10">PM10</button>
+              <button class="tab-btn" data-pollutant="o3">Ozone (O3)</button>
+              <button class="tab-btn" data-pollutant="no2">NO2</button>
+            </div>
+          </div>
+
+          <div class="chart-wrapper">
+            <canvas id="forecast-chart"></canvas>
+          </div>
+
+          <div class="chart-legend-custom">
+            <div class="legend-item">
+              <span class="legend-color" style="background-color: #38bdf8;"></span>
+              <span>Observed History (Actual Sensor)</span>
+            </div>
+            <div class="legend-item">
+              <span class="legend-color" style="background-color: #c084fc; border: 1px dashed #c084fc;"></span>
+              <span>24h Future Forecast (Machine Learning)</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <!-- Right Column: Station Leaderboard & Environmental Telemetry -->
+      <aside class="sidebar-column">
+
+        <!-- Station Leaderboard Card -->
+        <div class="glass-card" style="margin-bottom: 1.5rem;">
+          <div class="panel-header">
+            <h2 class="panel-title">
+              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <line x1="18" y1="20" x2="18" y2="10"></line>
+                <line x1="12" y1="20" x2="12" y2="4"></line>
+                <line x1="6" y1="20" x2="6" y2="14"></line>
+              </svg>
+              <span>Station Leaderboard</span>
+            </h2>
+            <span class="panel-badge">Ranked by AQI</span>
+          </div>
+
+          <!-- Station Search Input -->
+          <input type="text" id="search-stations" class="search-box" placeholder="Search station, city or pollutant..." />
+
+          <!-- Station List Container -->
+          <div id="stations-list" class="stations-list">
+            <!-- Dynamically populated by app.js -->
+          </div>
+        </div>
+
+        <!-- Environmental Weather Drawer -->
+        <div class="glass-card">
+          <div class="panel-header">
+            <h3 class="panel-title" style="font-size: 1rem;">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path>
+              </svg>
+              <span>Environmental Telemetry</span>
+            </h3>
+            <span class="panel-badge" style="background: rgba(16, 185, 129, 0.15); color: var(--aqi-good);">Active</span>
+          </div>
+
+          <div class="env-grid">
+            <div class="env-metric">
+              <div class="env-metric-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z"></path>
+                </svg>
+              </div>
+              <div class="env-metric-data">
+                <span class="env-metric-label">Temperature</span>
+                <span id="env-temp" class="env-metric-value">--</span>
+              </div>
+            </div>
+
+            <div class="env-metric">
+              <div class="env-metric-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+                </svg>
+              </div>
+              <div class="env-metric-data">
+                <span class="env-metric-label">Humidity</span>
+                <span id="env-hum" class="env-metric-value">--</span>
+              </div>
+            </div>
+
+            <div class="env-metric">
+              <div class="env-metric-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"></path>
+                </svg>
+              </div>
+              <div class="env-metric-data">
+                <span class="env-metric-label">Wind Speed</span>
+                <span id="env-wind" class="env-metric-value">--</span>
+              </div>
+            </div>
+
+            <div class="env-metric">
+              <div class="env-metric-icon">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <circle cx="12" cy="12" r="10"></circle>
+                  <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"></polygon>
+                </svg>
+              </div>
+              <div class="env-metric-data">
+                <span class="env-metric-label">Wind Dir</span>
+                <span id="env-dir" class="env-metric-value">--</span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+      </aside>
+
+    </section>
+
+  </main>
+
+  <!-- Footer -->
+  <footer>
+    <p>AeroPulse Distributed Air Quality Monitoring Platform &bull; Semester-5 DASSS</p>
+    <div class="footer-badges">
+      <span class="footer-badge">Apache Kafka 4.3</span>
+      <span class="footer-badge">PostgreSQL 17</span>
+      <span class="footer-badge">OpenAQ v3 API</span>
+      <span class="footer-badge">Python 3.12 ML Forecaster</span>
+      <span class="footer-badge">Express Backend REST API</span>
+    </div>
+  </footer>
+
+  <!-- Leaflet JS -->
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+  <!-- Chart.js -->
+  <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.2/dist/chart.umd.min.js"></script>
+
+  <!-- Application Client Logic -->
+  <script src="js/app.js"></script>
+</body>
+</html>

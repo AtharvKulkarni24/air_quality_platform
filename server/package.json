@@ -1,0 +1,31 @@
+{
+  "name": "server",
+  "version": "1.0.0",
+  "description": "Backend of the air quality project",
+  "main": "src/api.js",
+  "type": "module",
+  "scripts": {
+    "setup:topics": "node src/setupTopics.js",
+    "simulate": "node src/producers/simulator.js",
+    "produce:openaq": "node src/producers/openaqProducer.js",
+    "produce:openaq:once": "node src/producers/openaqProducer.js --once",
+    "validate": "node src/consumers/validator.js",
+    "sink": "node src/consumers/postgresSink.js",
+    "status": "node scripts/inspect-db.js",
+    "api": "node src/api.js",
+    "migrate:create": "node-pg-migrate create",
+    "migrate:up": "node-pg-migrate up --migrations-dir migrations --envPath .env",
+    "migrate:down": "node-pg-migrate down --migrations-dir migrations --envPath .env"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "axios": "^1.20.0",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.8",
+    "express": "^5.3.0",
+    "kafkajs": "^2.2.4",
+    "node-pg-migrate": "^9.0.0",
+    "pg": "^8.23.1"
+  }
+}

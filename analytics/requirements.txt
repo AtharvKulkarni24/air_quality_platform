@@ -1,0 +1,16 @@
+# Core environment & settings
+python-dotenv>=1.0.1
+pydantic-settings>=2.2.1
+
+# Database
+psycopg[binary]>=3.1.18
+sqlalchemy>=2.0.30
+
+# Data analysis & ML
+pandas>=2.2.2
+numpy>=1.26.4
+scikit-learn>=1.4.2
+scipy>=1.13.0
+
+# Kafka messaging
+kafka-python-ng>=2.2.2
