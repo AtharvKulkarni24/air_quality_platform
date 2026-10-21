@@ -7,6 +7,7 @@
   "scripts": {
     "setup:topics": "node src/setupTopics.js",
     "simulate": "node src/producers/simulator.js",
+    "simulate:seed": "node src/producers/simulator.js --seed",
     "produce:openaq": "node src/producers/openaqProducer.js",
     "produce:openaq:once": "node src/producers/openaqProducer.js --once",
     "validate": "node src/consumers/validator.js",

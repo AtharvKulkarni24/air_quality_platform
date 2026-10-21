@@ -71,18 +71,23 @@ def show_forecast():
     print("               Model: HistGradientBoostingRegressor                     ")
     print("=" * 80)
 
-    print("\nTraining ML time-series models and generating 24h forecasts for Pune stations...")
-    result = run_batch_forecast_for_city("Pune", limit_stations=4)
+    cities = ["Pune", "Mumbai", "Delhi"]
+    total_points = 0
 
-    print(f"\n [SUCCESS] Generated and saved {result['total_forecast_points_saved']} forecast points to database.")
-    print(f"Destination: air_quality_readings (measurement_type='forecast', data_mode='modelled')\n")
-
+    print(f"\nTraining ML time-series models and generating 24h forecasts for {', '.join(cities)}...")
     print("-" * 80)
     print(f"{'Station Name':<42} | {'Pollutant':<10} | {'Points':<8} | {'24h Avg Predicted'}")
     print("-" * 80)
-    for item in result["stations_forecasted"]:
-        print(f"{item['station'][:40]:<42} | {item['pollutant'].upper():<10} | {item['predictions_count']:<8} | {item['24h_avg_predicted']} µg/m³")
+
+    for city in cities:
+        res = run_batch_forecast_for_city(city, limit_stations=3)
+        total_points += res["total_forecast_points_saved"]
+        for item in res["stations_forecasted"]:
+            print(f"{item['station'][:40]:<42} | {item['pollutant'].upper():<10} | {item['predictions_count']:<8} | {item['24h_avg_predicted']} µg/m³")
+
     print("-" * 80)
+    print(f"\n [SUCCESS] Generated and saved {total_points} total forecast points to database across {len(cities)} cities.")
+    print(f"Destination: air_quality_readings (measurement_type='forecast', data_mode='modelled')\n")
 
 
 def main():
