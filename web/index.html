@@ -107,7 +107,7 @@
         <span class="stat-sub">Sub-Index derived via CPCB piece-wise curve</span>
       </article>
 
-      <!-- Card 3: Telemetry Pipeline -->
+      <!-- Card 3: Active Monitoring Network -->
       <article class="glass-card hero-card">
         <div class="card-header">
           <span id="hero-pipeline-label" class="card-label">Telemetry Pipeline</span>
@@ -119,15 +119,15 @@
         </div>
         <div>
           <div id="hero-total-stations" class="stat-value" style="color: #10b981;">-- Stations</div>
-          <p id="hero-total-sensors" class="hero-desc">Active Telemetry Sensors</p>
+          <p id="hero-total-sensors" class="hero-desc">Loading telemetry...</p>
         </div>
-        <span id="hero-pipeline-sub" class="stat-sub">Kafka Bus + PostgreSQL Ingestion</span>
+        <span id="hero-pipeline-sub" class="stat-sub">Telemetry active via Kafka</span>
       </article>
 
       <!-- Card 4: ML 24h Horizon Forecast -->
       <article class="glass-card hero-card">
         <div class="card-header">
-          <span id="hero-forecast-label" class="card-label">Predictive AI Engine</span>
+          <span class="card-label">Predictive AI Engine</span>
           <div class="card-icon">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#c084fc" stroke-width="2">
               <polygon points="12 2 15.09 8.26 22 9.27 17 14.14 18.18 21.02 12 17.77 5.82 21.02 7 14.14 2 9.27 8.91 8.26 12 2"></polygon>
@@ -135,73 +135,11 @@
           </div>
         </div>
         <div>
-          <div id="hero-forecast-count" class="stat-value" style="color: #c084fc;">-- Horizon Points</div>
-          <p id="hero-forecast-desc" class="hero-desc">HistGradientBoosting Regressor</p>
+          <div id="hero-forecast-count" class="stat-value" style="color: #c084fc;">48 Horizon Points</div>
+          <p class="hero-desc">HistGradientBoosting Regressor</p>
         </div>
-        <span id="hero-forecast-sub" class="stat-sub">24-hour ahead autoregressive projection</span>
+        <span class="stat-sub">24-hour ahead autoregressive projection</span>
       </article>
-
-    </section>
-
-    <!-- Advanced Environmental Intelligence & Standards Analysis -->
-    <section class="intelligence-grid" aria-label="Environmental Intelligence Analytics">
-      
-      <!-- Panel 1: Criteria Pollutants Safety Gauge & NAAQS Compliance -->
-      <div class="glass-card">
-        <div class="panel-header">
-          <div>
-            <h2 class="panel-title">
-              <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"></path>
-              </svg>
-              <span>National Standard Compliance (CPCB NAAQS)</span>
-            </h2>
-            <span style="font-size: 0.75rem; color: var(--text-muted);">Current City Concentration vs. 24-Hour Permissible Health Thresholds</span>
-          </div>
-          <span id="standards-city-badge" class="panel-badge">Pune Standards</span>
-        </div>
-
-        <div id="criteria-bars-container" class="criteria-bars-grid">
-          <!-- Dynamically populated by app.js -->
-        </div>
-      </div>
-
-      <!-- Panel 2: Atmospheric Ventilation & Cross-City Benchmark -->
-      <div class="glass-card" style="display: flex; flex-direction: column; justify-content: space-between;">
-        <div>
-          <div class="panel-header">
-            <div>
-              <h3 class="panel-title" style="font-size: 1.05rem;">
-                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M9.59 4.59A2 2 0 1 1 11 8H2m10.59 11.41A2 2 0 1 0 14 16H2m15.73-8.27A2.5 2.5 0 1 1 19.5 12H2"></path>
-                </svg>
-                <span>Atmospheric Dispersion Index</span>
-              </h3>
-              <span style="font-size: 0.75rem; color: var(--text-muted);">Boundary Layer Flushing & Dilution Rate</span>
-            </div>
-          </div>
-
-          <div class="dispersion-card-content">
-            <div class="dispersion-status-header">
-              <span id="dispersion-pill" class="dispersion-pill">Evaluating...</span>
-              <span id="dispersion-wind-label" style="font-size: 0.85rem; color: #fff; font-weight: 700;">-- m/s Wind</span>
-            </div>
-            <p id="dispersion-desc" class="hero-desc" style="margin-top: 0.5rem;">Analyzing atmospheric ventilation parameters...</p>
-          </div>
-        </div>
-
-        <!-- Cross-City Benchmark Matrix -->
-        <div style="margin-top: 1rem; border-top: 1px solid var(--bg-card-border); padding-top: 0.85rem;">
-          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
-            <span style="font-size: 0.78rem; font-weight: 700; color: var(--text-secondary); text-transform: uppercase;">Tri-City Benchmark</span>
-            <span style="font-size: 0.72rem; color: var(--text-muted);">Pune vs. Mumbai vs. Delhi</span>
-          </div>
-
-          <div id="cross-city-cards" class="cross-city-grid">
-            <!-- Dynamically populated by app.js -->
-          </div>
-        </div>
-      </div>
 
     </section>
 

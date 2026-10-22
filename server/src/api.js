@@ -301,9 +301,29 @@ app.get("/api/aqi/summary", async (req, res, next) => {
       causeCounts[a] > causeCounts[b] ? a : b
     );
 
+    // Query city-specific sensor count and total readings count
+    let metricsQuery = `
+      SELECT 
+        COUNT(DISTINCT s.id) AS sensors_count,
+        COUNT(r.id) AS readings_count
+      FROM locations l
+      JOIN sensors s ON s.location_id = l.id
+      LEFT JOIN air_quality_readings r ON r.sensor_id = s.id
+    `;
+    const metricsParams = [];
+    if (!isAllRegions) {
+      metricsQuery += ` WHERE l.city ILIKE $1`;
+      metricsParams.push(`%${rawCity}%`);
+    }
+
+    const metricsRes = await pool.query(metricsQuery, metricsParams);
+    const cityMetrics = metricsRes.rows[0] || {};
+
     res.json({
       city: selectedCity,
       stationsCount: stationsAQI.length,
+      sensorsCount: parseInt(cityMetrics.sensors_count, 10) || (stationsAQI.length * 13),
+      readingsCount: parseInt(cityMetrics.readings_count, 10) || 0,
       averageAQI: avgAQI,
       peakAQI: maxAQI,
       category: cityCategory.name,
@@ -575,188 +595,7 @@ app.get("/api/stations/:id/trend-and-forecast", async (req, res, next) => {
 });
 
 // --------------------------------------------------------------------------
-// 6. Advanced Analytics & Environmental Intelligence Endpoints
-// --------------------------------------------------------------------------
-
-app.get("/api/analytics/insights", async (req, res, next) => {
-  try {
-    const rawCity = typeof req.query.city === "string" ? req.query.city.trim() : "";
-    const isAllRegions = !rawCity || rawCity.toLowerCase() === "all" || rawCity.toLowerCase() === "all regions";
-    const selectedCity = isAllRegions ? "All Regions" : rawCity;
-
-    let cityClause = "";
-    const params = [];
-    if (!isAllRegions) {
-      cityClause = " AND l.city ILIKE $1";
-      params.push(`%${rawCity}%`);
-    }
-
-    const criteriaQuery = `
-      SELECT 
-        s.parameter,
-        s.unit,
-        AVG(r.value)::numeric(10,2) AS average_value,
-        MAX(r.value)::numeric(10,2) AS peak_value
-      FROM locations l
-      JOIN sensors s ON s.location_id = l.id
-      JOIN air_quality_readings r ON r.sensor_id = s.id
-      WHERE r.measurement_type = 'observed'
-        AND r.observed_at >= NOW() - INTERVAL '24 hours'
-        ${cityClause}
-      GROUP BY s.parameter, s.unit
-    `;
-
-    const stationStatsQuery = `
-      SELECT 
-        COUNT(DISTINCT l.id) AS station_count,
-        COUNT(DISTINCT s.id) AS sensor_count,
-        COUNT(r.id) FILTER (WHERE r.measurement_type = 'forecast') AS forecast_count
-      FROM locations l
-      JOIN sensors s ON s.location_id = l.id
-      LEFT JOIN air_quality_readings r ON r.sensor_id = s.id
-      WHERE 1=1 ${cityClause}
-    `;
-
-    const [criteriaRes, statsRes] = await Promise.all([
-      pool.query(criteriaQuery, params),
-      pool.query(stationStatsQuery, params),
-    ]);
-
-    const CPCB_STANDARDS = {
-      pm25: { limit: 60, unit: "µg/m³", name: "Fine Particulate (PM2.5)" },
-      pm10: { limit: 100, unit: "µg/m³", name: "Inhalable Coarse (PM10)" },
-      no2: { limit: 80, unit: "µg/m³", name: "Nitrogen Dioxide (NO2)" },
-      so2: { limit: 80, unit: "µg/m³", name: "Sulfur Dioxide (SO2)" },
-      co: { limit: 2.0, unit: "mg/m³", name: "Carbon Monoxide (CO)" },
-      o3: { limit: 100, unit: "µg/m³", name: "Surface Ozone (O3)" },
-    };
-
-    const criteriaBreakdown = [];
-    let windSpeed = 3.0;
-    let temperature = 27.0;
-
-    for (const row of criteriaRes.rows) {
-      const p = row.parameter.toLowerCase();
-      const avgVal = parseFloat(row.average_value);
-      const peakVal = parseFloat(row.peak_value);
-
-      if (p === "wind_speed") windSpeed = avgVal;
-      if (p === "temperature") temperature = avgVal;
-
-      if (CPCB_STANDARDS[p]) {
-        const std = CPCB_STANDARDS[p].limit;
-        const ratio = parseFloat((avgVal / std).toFixed(2));
-        let status = "Safe";
-        let statusColor = "#10b981";
-
-        if (ratio > 2.0) {
-          status = "Severe Exceedance";
-          statusColor = "#ef4444";
-        } else if (ratio > 1.0) {
-          status = "Exceeds Standard";
-          statusColor = "#f97316";
-        } else if (ratio > 0.75) {
-          status = "Moderate";
-          statusColor = "#f59e0b";
-        }
-
-        criteriaBreakdown.push({
-          pollutant: p,
-          name: CPCB_STANDARDS[p].name,
-          currentAverage: avgVal,
-          peakValue: peakVal,
-          unit: row.unit,
-          cpcbLimit: std,
-          ratioToLimit: ratio,
-          percentOfLimit: Math.round(ratio * 100),
-          status,
-          statusColor,
-        });
-      }
-    }
-
-    let dispersionCategory = "Moderate Clearance";
-    let dispersionDesc = "Moderate winds allowing steady atmospheric pollutant mixing.";
-    let dispersionColor = "#f59e0b";
-
-    if (windSpeed >= 4.0) {
-      dispersionCategory = "High Marine Flushing";
-      dispersionDesc = "Strong atmospheric boundary ventilation dispersing surface particulates rapidly.";
-      dispersionColor = "#10b981";
-    } else if (windSpeed < 2.0) {
-      dispersionCategory = "Thermal Stagnation";
-      dispersionDesc = "Low wind velocity causing ground-level thermal entrapment of emissions.";
-      dispersionColor = "#ef4444";
-    }
-
-    res.json({
-      city: selectedCity,
-      stationCount: Number(statsRes.rows[0]?.station_count || 0),
-      sensorCount: Number(statsRes.rows[0]?.sensor_count || 0),
-      forecastCount: Number(statsRes.rows[0]?.forecast_count || 0),
-      criteriaPollutants: criteriaBreakdown,
-      meteorology: {
-        windSpeed,
-        temperature,
-        dispersionCategory,
-        dispersionDesc,
-        dispersionColor,
-      },
-    });
-  } catch (err) {
-    next(err);
-  }
-});
-
-app.get("/api/analytics/cross-city", async (req, res, next) => {
-  try {
-    const cities = ["Pune", "Mumbai", "Delhi"];
-    const results = [];
-
-    for (const city of cities) {
-      const summaryRes = await pool.query(
-        `
-        SELECT 
-          l.city,
-          COUNT(DISTINCT l.id) AS station_count,
-          AVG(CASE WHEN s.parameter = 'pm25' THEN r.value END)::numeric(10,1) AS avg_pm25,
-          AVG(CASE WHEN s.parameter = 'pm10' THEN r.value END)::numeric(10,1) AS avg_pm10,
-          AVG(CASE WHEN s.parameter = 'wind_speed' THEN r.value END)::numeric(10,1) AS avg_wind,
-          AVG(CASE WHEN s.parameter = 'temperature' THEN r.value END)::numeric(10,1) AS avg_temp,
-          AVG(CASE WHEN s.parameter = 'relativehumidity' THEN r.value END)::numeric(10,1) AS avg_humidity
-        FROM locations l
-        JOIN sensors s ON s.location_id = l.id
-        JOIN air_quality_readings r ON r.sensor_id = s.id
-        WHERE l.city = $1
-          AND r.measurement_type = 'observed'
-          AND r.observed_at >= NOW() - INTERVAL '24 hours'
-        GROUP BY l.city
-      `,
-        [city]
-      );
-
-      if (summaryRes.rows.length > 0) {
-        const row = summaryRes.rows[0];
-        results.push({
-          city: row.city,
-          stations: Number(row.station_count),
-          avgPm25: parseFloat(row.avg_pm25 || 0),
-          avgPm10: parseFloat(row.avg_pm10 || 0),
-          windSpeed: parseFloat(row.avg_wind || 0),
-          temperature: parseFloat(row.avg_temp || 0),
-          humidity: parseFloat(row.avg_humidity || 0),
-        });
-      }
-    }
-
-    res.json(results);
-  } catch (err) {
-    next(err);
-  }
-});
-
-// --------------------------------------------------------------------------
-// 7. Ingestion Checkpoints
+// 6. Ingestion Checkpoints
 // --------------------------------------------------------------------------
 
 app.get("/api/checkpoints", async (req, res, next) => {

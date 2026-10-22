@@ -90,26 +90,18 @@ function setupEventListeners() {
 
 async function loadDashboardData() {
   try {
-    const cityParam = encodeURIComponent(STATE.city);
-    const [summaryRes, statusRes, stationsRes, anomaliesRes, insightsRes, crossCityRes] = await Promise.all([
-      fetch(`${API_BASE}/aqi/summary?city=${cityParam}`).then((r) => r.json()),
+    const [summaryRes, statusRes, stationsRes, anomaliesRes] = await Promise.all([
+      fetch(`${API_BASE}/aqi/summary?city=${encodeURIComponent(STATE.city)}`).then((r) => r.json()),
       fetch(`${API_BASE}/status`).then((r) => r.json()),
-      fetch(`${API_BASE}/stations?city=${cityParam}`).then((r) => r.json()),
+      fetch(`${API_BASE}/stations?city=${encodeURIComponent(STATE.city)}`).then((r) => r.json()),
       fetch(`${API_BASE}/anomalies`).then((r) => r.json()).catch(() => ({ status: "nominal", activeAnomalies: 0 })),
-      fetch(`${API_BASE}/analytics/insights?city=${cityParam}`).then((r) => r.json()).catch(() => null),
-      fetch(`${API_BASE}/analytics/cross-city`).then((r) => r.json()).catch(() => []),
     ]);
 
     STATE.stationsAQI = summaryRes.stations || [];
     STATE.stationsMetadata = stationsRes || [];
 
-    // Render Hero Cards (Fully City-Specific)
-    renderHeroCards(summaryRes, statusRes, insightsRes);
-
-    // Render Advanced Environmental Intelligence & Standards Analysis
-    if (insightsRes) {
-      renderEnvironmentalIntelligence(insightsRes, crossCityRes);
-    }
+    // Render Hero Cards
+    renderHeroCards(summaryRes, statusRes);
 
     // Render Anomaly & Sensor Health Badge
     renderAnomalyBadge(anomaliesRes);
@@ -154,10 +146,7 @@ function renderAnomalyBadge(anomalies) {
 // 3. Hero Cards & Summary Render
 // --------------------------------------------------------------------------
 
-function renderHeroCards(summary, status, insights) {
-  const isCitySpecific = Boolean(STATE.city && STATE.city.trim() !== "");
-  const cityName = STATE.city || "All Regions";
-
+function renderHeroCards(summary, status) {
   // 1. City AQI Card
   const aqiScore = document.getElementById("hero-aqi-score");
   const aqiPill = document.getElementById("hero-aqi-pill");
@@ -186,165 +175,51 @@ function renderHeroCards(summary, status, insights) {
   if (domPollutant) {
     domPollutant.textContent = (summary.primaryDominantPollutant || "PM10").toUpperCase();
     if (domDetail) {
-      domDetail.textContent = `Primary factor determining ${isCitySpecific ? cityName : "regional"} health index`;
+      domDetail.textContent = `Primary factor determining ${STATE.city || "regional"} health index`;
     }
   }
 
   // 3. Telemetry Ingestion Metrics (City-Specific)
-  const pipeLabel = document.getElementById("hero-pipeline-label");
   const statStations = document.getElementById("hero-total-stations");
   const statSensors = document.getElementById("hero-total-sensors");
-  const pipeSub = document.getElementById("hero-pipeline-sub");
+  const pipelineLabel = document.getElementById("hero-pipeline-label");
+  const pipelineSub = document.getElementById("hero-pipeline-sub");
 
   if (statStations) {
-    if (pipeLabel) {
-      pipeLabel.textContent = isCitySpecific ? `${cityName} Telemetry` : "Global Pipeline";
+    const isFiltered = Boolean(STATE.city && STATE.city.trim() !== "");
+    const stationCount = summary.stationsCount !== undefined ? summary.stationsCount : (isFiltered ? 6 : 18);
+    const sensorCount = summary.sensorsCount !== undefined ? summary.sensorsCount : (stationCount * 13);
+    const readingsCount = summary.readingsCount || 0;
+
+    statStations.textContent = `${stationCount} Station${stationCount === 1 ? "" : "s"}`;
+
+    if (pipelineLabel) {
+      pipelineLabel.textContent = isFiltered ? `${STATE.city} Network` : "Global Network";
     }
 
-    const stationCount = isCitySpecific
-      ? (insights?.stationCount || summary.stationsCount || 6)
-      : (status?.metrics?.total_locations || summary.stationsCount || 18);
-
-    const sensorCount = isCitySpecific
-      ? (insights?.sensorCount || stationCount * 13)
-      : (status?.metrics?.total_sensors || 234);
-
-    statStations.textContent = `${stationCount} Stations`;
     if (statSensors) {
-      statSensors.textContent = isCitySpecific
-        ? `${sensorCount} Sensors Active in ${cityName}`
-        : `${sensorCount} Total Sensors Across Network`;
+      if (isFiltered) {
+        statSensors.textContent = `${sensorCount} Sensors in ${STATE.city}`;
+      } else {
+        statSensors.textContent = `${sensorCount} Sensors across All Regions`;
+      }
     }
 
-    if (pipeSub) {
-      pipeSub.textContent = isCitySpecific
-        ? `13 Parameters Checkpointed in DB`
-        : `${status?.metrics?.total_readings || 0} Total Readings Ingested`;
+    if (pipelineSub) {
+      if (readingsCount > 0) {
+        pipelineSub.textContent = `${readingsCount.toLocaleString()} readings processed via Kafka`;
+      } else {
+        pipelineSub.textContent = "Checkpointed in PostgreSQL via Kafka";
+      }
     }
   }
 
-  // 4. ML Forecaster Status (City-Specific)
-  const mlLabel = document.getElementById("hero-forecast-label");
+  // 4. ML Forecaster Status
   const mlCount = document.getElementById("hero-forecast-count");
-  const mlDesc = document.getElementById("hero-forecast-desc");
-  const mlSub = document.getElementById("hero-forecast-sub");
-
-  if (mlCount) {
-    if (mlLabel) {
-      mlLabel.textContent = isCitySpecific ? `${cityName} AI Horizon` : "Predictive AI Engine";
-    }
-
-    const forecastCount = isCitySpecific
-      ? (insights?.forecastCount || 144)
-      : (status?.metrics?.total_forecasts || 432);
-
-    mlCount.textContent = `${forecastCount} Points`;
-
-    if (mlDesc) {
-      mlDesc.textContent = isCitySpecific
-        ? `24h ML Horizon for ${cityName}`
-        : `HistGradientBoosting Regressor`;
-    }
-
-    if (mlSub) {
-      mlSub.textContent = isCitySpecific
-        ? `PM2.5 & PM10 Autoregressive Models`
-        : `432 Total Predictions Stored in DB`;
-    }
+  if (mlCount && status?.metrics) {
+    mlCount.textContent = `${status.metrics.total_forecasts || 48} Horizon Points`;
   }
 }
-
-// --------------------------------------------------------------------------
-// 4. Environmental Intelligence & Standards Analysis
-// --------------------------------------------------------------------------
-
-function renderEnvironmentalIntelligence(insights, crossCityList) {
-  // Update Badge
-  const badge = document.getElementById("standards-city-badge");
-  if (badge) {
-    badge.textContent = `${insights.city || "Regional"} Standards`;
-  }
-
-  // Render Criteria Pollutants Bars
-  const container = document.getElementById("criteria-bars-container");
-  if (container && insights.criteriaPollutants) {
-    container.innerHTML = insights.criteriaPollutants
-      .map((item) => {
-        const percent = Math.min(100, Math.round(item.percentOfLimit));
-        return `
-          <div class="criteria-bar-item">
-            <div class="criteria-header">
-              <span class="criteria-title">${item.name}</span>
-              <span class="criteria-status-badge" style="background: ${item.statusColor}20; color: ${item.statusColor}; border: 1px solid ${item.statusColor}50;">
-                ${item.status}
-              </span>
-            </div>
-            <div class="criteria-metric-line">
-              <span>Current: <b style="color: #fff;">${item.currentAverage} ${item.unit}</b> (Peak: ${item.peakValue})</span>
-              <span>CPCB Limit: <b>${item.cpcbLimit} ${item.unit}</b> (${item.percentOfLimit}%)</span>
-            </div>
-            <div class="criteria-progress-bg">
-              <div class="criteria-progress-fill" style="width: ${percent}%; background: ${item.statusColor};"></div>
-            </div>
-          </div>
-        `;
-      })
-      .join("");
-  }
-
-  // Render Atmospheric Dispersion Card
-  if (insights.meteorology) {
-    const dispPill = document.getElementById("dispersion-pill");
-    const dispWind = document.getElementById("dispersion-wind-label");
-    const dispDesc = document.getElementById("dispersion-desc");
-
-    if (dispPill) {
-      dispPill.textContent = insights.meteorology.dispersionCategory;
-      dispPill.style.background = `${insights.meteorology.dispersionColor}20`;
-      dispPill.style.color = insights.meteorology.dispersionColor;
-      dispPill.style.border = `1px solid ${insights.meteorology.dispersionColor}50`;
-    }
-
-    if (dispWind) {
-      dispWind.textContent = `${insights.meteorology.windSpeed} m/s Wind • ${insights.meteorology.temperature}°C`;
-    }
-
-    if (dispDesc) {
-      dispDesc.textContent = insights.meteorology.dispersionDesc;
-    }
-  }
-
-  // Render Tri-City Benchmark Matrix
-  const benchmarkContainer = document.getElementById("cross-city-cards");
-  if (benchmarkContainer && crossCityList && crossCityList.length > 0) {
-    benchmarkContainer.innerHTML = crossCityList
-      .map((c) => {
-        const isActive = c.city.toLowerCase() === (STATE.city || "").toLowerCase() ? "active" : "";
-        // Estimate rough city AQI from PM2.5
-        const estAqi = Math.round(c.avgPm25 * 1.8);
-        const aqiColor = getCategoryColor(estAqi);
-
-        return `
-          <div class="cross-city-chip ${isActive}" onclick="setDashboardCity('${c.city}')">
-            <div class="cross-city-name">${c.city}</div>
-            <div class="cross-city-aqi" style="color: ${aqiColor};">PM2.5: ${c.avgPm25}</div>
-            <div class="cross-city-meta">PM10: ${c.avgPm10} • ${c.windSpeed} m/s</div>
-          </div>
-        `;
-      })
-      .join("");
-  }
-}
-
-window.setDashboardCity = function (cityName) {
-  const citySelect = document.getElementById("city-select");
-  if (citySelect) {
-    citySelect.value = cityName;
-  }
-  STATE.city = cityName;
-  STATE.selectedStationId = null;
-  loadDashboardData();
-};
 
 // --------------------------------------------------------------------------
 // 4. Interactive Leaflet Map
