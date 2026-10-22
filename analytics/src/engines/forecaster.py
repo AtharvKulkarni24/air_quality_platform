@@ -187,21 +187,21 @@ def save_forecasts_to_db(forecasts: List[Dict], source: str = "ml-forecaster", u
     return saved_count
 
 
-def run_batch_forecast_for_city(city: str = "Pune", limit_stations: int = 5) -> Dict:
-    """Run forecasting for PM2.5 and PM10 across top stations in a city."""
-    # Find PM2.5 and PM10 sensors for the city
-    query = text("""
+def run_batch_forecast_for_city(city: str = "Pune", limit_stations: Optional[int] = None) -> Dict:
+    """Run forecasting for PM2.5, PM10, O3, and NO2 across stations in a city."""
+    limit_clause = f"LIMIT {limit_stations * 4}" if limit_stations else ""
+    query = text(f"""
         SELECT s.id, s.parameter, s.unit, l.name AS station_name, l.city
         FROM sensors s
         JOIN locations l ON s.location_id = l.id
-        WHERE s.parameter IN ('pm25', 'pm10')
+        WHERE s.parameter IN ('pm25', 'pm10', 'o3', 'no2')
           AND l.city ILIKE :city
-        ORDER BY l.id ASC
-        LIMIT :limit
+        ORDER BY l.id ASC, s.parameter ASC
+        {limit_clause}
     """)
 
     with engine.connect() as conn:
-        sensors = conn.execute(query, {"city": f"%{city}%", "limit": limit_stations * 2}).mappings().all()
+        sensors = conn.execute(query, {"city": f"%{city}%"}).mappings().all()
 
     total_forecasts = 0
     station_summaries = []

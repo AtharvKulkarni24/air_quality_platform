@@ -514,25 +514,26 @@ async function updateChart(stationId, pollutant) {
     const forecastData = [];
 
     // Format timestamps for x-axis
-    observedPoints.forEach((pt) => {
+    observedPoints.forEach((pt, idx) => {
       const d = new Date(pt.observed_at);
-      const timeStr = `${d.getHours()}:00`;
+      const isLatest = idx === observedPoints.length - 1;
+      const hourStr = `${String(d.getHours()).padStart(2, "0")}:00`;
+      const timeStr = isLatest ? "Now" : hourStr;
       labels.push(timeStr);
-      observedData.push(pt.value);
+      observedData.push(parseFloat(pt.value));
       forecastData.push(null);
     });
 
-    forecastPoints.forEach((pt) => {
-      const d = new Date(pt.forecast_at);
-      const timeStr = `+${d.getHours()}:00`;
+    forecastPoints.forEach((pt, idx) => {
+      const timeStr = `+${idx + 1}h`;
       labels.push(timeStr);
       observedData.push(null);
-      forecastData.push(pt.predicted_value);
+      forecastData.push(parseFloat(pt.predicted_value));
     });
 
     // Bridge the gap between observed and forecast for continuous line look
     if (observedData.length > 0 && forecastData.length > 0) {
-      forecastData[observedData.length - 1] = observedData[observedData.length - 1];
+      forecastData[observedPoints.length - 1] = observedData[observedPoints.length - 1];
     }
 
     STATE.chart.data.labels = labels;

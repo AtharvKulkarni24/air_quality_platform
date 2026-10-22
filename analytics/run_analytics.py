@@ -80,7 +80,7 @@ def show_forecast():
     print("-" * 80)
 
     for city in cities:
-        res = run_batch_forecast_for_city(city, limit_stations=3)
+        res = run_batch_forecast_for_city(city, limit_stations=None)
         total_points += res["total_forecast_points_saved"]
         for item in res["stations_forecasted"]:
             print(f"{item['station'][:40]:<42} | {item['pollutant'].upper():<10} | {item['predictions_count']:<8} | {item['24h_avg_predicted']} µg/m³")
