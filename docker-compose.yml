@@ -11,12 +11,14 @@ services:
   postgres:
     image: postgres:17-alpine
     container_name: aq-postgres
+    env_file:
+      - .env
     environment:
-      POSTGRES_USER: aq_user
-      POSTGRES_PASSWORD: Atharv24
-      POSTGRES_DB: air_quality
+      POSTGRES_USER: ${POSTGRES_USER:-aq_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_DB: ${POSTGRES_DB:-air_quality}
     ports:
-      - "5433:5432"
+      - "${POSTGRES_PORT:-5433}:5432"
     volumes:
       - pg_data:/var/lib/postgresql/data
 

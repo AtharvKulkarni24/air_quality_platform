@@ -1,18 +1,20 @@
 from pathlib import Path
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-ENV_PATH = Path(__file__).resolve().parent.parent / ".env"
+# Look for .env in analytics/ or project root
+ANALYTICS_ENV = Path(__file__).resolve().parent.parent / ".env"
+ROOT_ENV = Path(__file__).resolve().parents[2] / ".env"
 
 
 class Settings(BaseSettings):
-    database_url: str = "postgresql://aq_user:Atharv24@localhost:5433/air_quality"
+    database_url: str
     kafka_broker: str = "localhost:9092"
     kafka_topic_validated: str = "air-quality.validated"
     kafka_topic_predictions: str = "air-quality.predictions"
     kafka_topic_alerts: str = "air-quality.alerts"
 
     model_config = SettingsConfigDict(
-        env_file=str(ENV_PATH),
+        env_file=(str(ANALYTICS_ENV), str(ROOT_ENV)),
         env_file_encoding="utf-8",
         extra="ignore"
     )
